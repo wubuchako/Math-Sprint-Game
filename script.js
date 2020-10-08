@@ -83,7 +83,30 @@ function createEquations() {
 //   itemContainer.appendChild(bottomSpacer);
 // }
 
-// Get the value from selected radio button 選んだ質問数の情報をえる
+
+// Displays 3, 2, 1, GO! カウントダウン表示 1秒づつズレて表示
+function countdownStart(){
+    countdown.textContent = '3'; // テキスト３を表示
+    setTimeout(() => {
+        countdown.textContent = '2';
+    }, 1000); //１０００は1秒
+    setTimeout(() => {
+        countdown.textContent = '1';
+    }, 2000);　// 2秒遅れ
+    setTimeout(() => {
+        countdown.textContent = 'GO!';
+    }, 3000); // 3秒遅れ
+}
+
+// Navigate from Splash Page to Countdown Page スタートボタン押したら、カウントダウンページになる
+function showCountdown(){
+    countdownPage.hidden = false;
+    splashPage.hidden = true;
+    countdownStart();
+}
+
+
+// Get the value from selected radio button クリックすると選んだ質問数の情報をえる
 function getRadioValue(){
     let radioValue;
     radioInputs.forEach((radioInput) => {
@@ -95,11 +118,15 @@ function getRadioValue(){
     return radioValue;
 }
 
-// Form that decides amount of questions 質問数を選んでスタートボタンクリック
+// Form that decides amount of questions 質問数を選んでスタートボタンクリック,カウントダウンページ開く
 function selectQuestionAmount(e){
     e.preventDefault(); //初期設定を防ぐ
     questionAmount = getRadioValue();
     console.log('question amount:', questionAmount);
+    // きちんと入力されたらカウントダウンページに行く
+    if(questionAmount){
+        showCountdown();
+    }
 }
 
 //クリックすると背景色が水色になる
