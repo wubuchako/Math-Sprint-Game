@@ -22,6 +22,7 @@ const playAgainBtn = document.querySelector('.play-again');
 let questionAmount = 0;
 let equationsArray = [];
 let playerGuessArray = [];
+let bestScoreArray = [];
 
 // Game Page
 let firstNumber = 0;
@@ -30,71 +31,148 @@ let equationObject = {};
 const wrongFormat = [];
 
 // Time
-let timer; //stop and start
-let timePlayed = 0; //10秒ごとにプレイ
+let timer;
+let timePlayed = 0;
 let baseTime = 0;
 let penaltyTime = 0;
-let finalTime =0;
-let finalTimeDisplay = '0.0s';
+let finalTime = 0;
+let finalTimeDisplay = '0.0';
 
 // Scroll
-let valueY = 0; //right wrong ボタンで数字変わる
+let valueY = 0;
 
-// Stop timer, Process Results, go to score page
-function checkTime(){
-    console.log(timePlayed);
-    if(playerGuessArray.length == questionAmount){
-     console.log('player guess array:', playerGuessArray);
-     clearInterval(timer);
-     // Check for wrong huess, add penalty time
-     equationsArray.forEach((equation, index) => {
-         if(equation.evaluated === playerGuessArray){
-
-         }
-     });
- }
+// Refresh Splash Page Best Scores
+function bestScoresToDOM() {
+  bestScores.forEach((bestScore, index) => {
+    const bestScoreEl = bestScore;
+    bestScoreEl.textContent = `${bestScoreArray[index].bestScore}s`;
+  });
 }
 
+// Check Local Storage for Best Scores, Set bestScoreArray
+function getSavedBestScores() {
+  if (localStorage.getItem('bestScores')) {
+    bestScoreArray = JSON.parse(localStorage.bestScores);
+  } else {
+    bestScoreArray = [
+      { questions: 10, bestScore: finalTimeDisplay },
+      { questions: 25, bestScore: finalTimeDisplay },
+      { questions: 50, bestScore: finalTimeDisplay },
+      { questions: 99, bestScore: finalTimeDisplay },
+    ];
+    localStorage.setItem('bestScores', JSON.stringify(bestScoreArray));
+  }
+  bestScoresToDOM();
+}
 
+// Update Best Score Array
+function updateBestScore() {
+  bestScoreArray.forEach((score, index) => {
+    // Select correct Best Score to update
+    if (questionAmount == score.questions) {
+      // Return Best Score as number with one decimal
+      const savedBestScore = Number(bestScoreArray[index].bestScore);
+      // Update if the new final score is less or replacing zero
+      if (savedBestScore === 0 || savedBestScore > finalTime) {
+        bestScoreArray[index].bestScore = finalTimeDisplay;
+      }
+    }
+  });
+  // Update Splash Page
+  bestScoresToDOM();
+  // Save to Local Storage
+  localStorage.setItem('bestScores', JSON.stringify(bestScoreArray));
+}
 
+// Reset Game
+function playAgain() {
+  gamePage.addEventListener('click', startTimer);
+  scorePage.hidden = true;
+  splashPage.hidden = false;
+  equationsArray = [];
+  playerGuessArray = [];
+  valueY = 0;
+  playAgainBtn.hidden = true;
+}
+
+// Show Score Page
+function showScorePage() {
+  // Show Play Again button after 1 second delay
+  setTimeout(() => {
+    playAgainBtn.hidden = false;
+  }, 1000);
+  gamePage.hidden = true;
+  scorePage.hidden = false;
+}
+
+// Format & Display Time in DOM
+function scoresToDOM() {
+  finalTimeDisplay = finalTime.toFixed(1);
+  baseTime = timePlayed.toFixed(1);
+  penaltyTime = penaltyTime.toFixed(1);
+  baseTimeEl.textContent = `Base Time: ${baseTime}s`;
+  penaltyTimeEl.textContent = `Penalty: +${penaltyTime}s`;
+  finalTimeEl.textContent = `${finalTimeDisplay}s`;
+  updateBestScore();
+  // Scroll to Top, go to Score Page
+  itemContainer.scrollTo({ top: 0, behavior: 'instant' });
+  showScorePage();
+}
+
+// Stop Timer, Process Results, go to Score Page
+function checkTime() {
+  console.log(timePlayed);
+  if (playerGuessArray.length == questionAmount) {
+    clearInterval(timer);
+    // Check for wrong guess, add penaltyTime
+    equationsArray.forEach((equation, index) => {
+      if (equation.evaluated === playerGuessArray[index]) {
+        // Correct Guess, No Penalty
+      } else {
+        // Incorrect Guess, Add Penalty
+        penaltyTime += 0.5;
+      }
+    });
+    finalTime = timePlayed + penaltyTime;
+    console.log('time:', timePlayed, 'penalty:', penaltyTime, 'final:', finalTime);
+    scoresToDOM();
+  }
+}
 
 // Add a tenth of a second to timePlayed
 function addTime() {
-    timePlayed += 0.1;
-    checkTime();
+  timePlayed += 0.1;
+  checkTime();
 }
 
 // Start timer when game page is clicked
-function startTimer(){
-    // Reset times
-    timePlayed =0;
-    penaltyTime =0;
-    finalTime =0;
-    timer = setInterval(addTime, 100);
-    gamePage.removeEventListener('click', startTimer);
+function startTimer() {
+  // Reset times
+  timePlayed = 0;
+  penaltyTime = 0;
+  finalTime = 0;
+  timer = setInterval(addTime, 100);
+  gamePage.removeEventListener('click', startTimer);
 }
 
 // Scroll, Store user selection in playerGuessArray
-function select(guessedTrue){
-    
- //Scroll 80 pixels
- valueY += 80;
- itemContainer.scroll(0, valueY);
- // Add player guess to array  wrongボタン押したらfalse
- return guessedTrue ? playerGuessArray.push('true'): playerGuessArray.push('false');
-
+function select(guessedTrue) {
+  // Scroll 80 more pixels
+  valueY += 80;
+  itemContainer.scroll(0, valueY);
+  // Add player guess to array
+  return guessedTrue ? playerGuessArray.push('true') : playerGuessArray.push('false');
 }
 
-
-// Display Game Page
-function showGamePage(){
-    gamePage.hidden = false;
-    countdownPage.hidden = true;
+// Displays Game Page
+function showGamePage() {
+  gamePage.hidden = false;
+  countdownPage.hidden = true;
 }
 
-// Get Random Number up to a max number
-function getRandomInt(max){
-    return Math.floor(Math.random() * Math.floor(max));
+// Get Random Number up to a certain amount
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
 }
 
 // Create Correct/Incorrect Random Equations
@@ -105,24 +183,24 @@ function createEquations() {
   // Set amount of wrong equations
   const wrongEquations = questionAmount - correctEquations;
   console.log('wrong equations:', wrongEquations);
-  // Loop through, multiply random numbers up to 9, push to array
+  // Loop through for each correct equation, multiply random numbers up to 9, push to array
   for (let i = 0; i < correctEquations; i++) {
-    firstNumber = getRandomInt(9); //最大の数が９
+    firstNumber = getRandomInt(9);
     secondNumber = getRandomInt(9);
     const equationValue = firstNumber * secondNumber;
     const equation = `${firstNumber} x ${secondNumber} = ${equationValue}`;
     equationObject = { value: equation, evaluated: 'true' };
     equationsArray.push(equationObject);
   }
-  // Loop through, mess with the equation results, push to array
- for (let i = 0; i < wrongEquations; i++) {
+  // Loop through for each wrong equation, mess with the equation results, push to array
+  for (let i = 0; i < wrongEquations; i++) {
     firstNumber = getRandomInt(9);
     secondNumber = getRandomInt(9);
     const equationValue = firstNumber * secondNumber;
     wrongFormat[0] = `${firstNumber} x ${secondNumber + 1} = ${equationValue}`;
     wrongFormat[1] = `${firstNumber} x ${secondNumber} = ${equationValue - 1}`;
     wrongFormat[2] = `${firstNumber + 1} x ${secondNumber} = ${equationValue}`;
-    const formatChoice = getRandomInt(3); //最大数を３とする
+    const formatChoice = getRandomInt(2);
     const equation = wrongFormat[formatChoice];
     equationObject = { value: equation, evaluated: 'false' };
     equationsArray.push(equationObject);
@@ -131,19 +209,18 @@ function createEquations() {
 }
 
 // Add Equations to DOM
-function equationsToDOM(){
-//elementを作ってつける
- equationsArray.forEach((equation) => {
- // Item
- const item = document.createElement('div');
- item.classList.add('item');
- // Equation Text
- const equationText = document.createElement('h1');
- equationText.textContent = equation.value;
-// Append
-item.appendChild(equationText);
-itemContainer.appendChild(item);
- });
+function equationsToDOM() {
+  equationsArray.forEach((equation) => {
+    // Item
+    const item = document.createElement('div');
+    item.classList.add('item');
+    // Equation Text
+    const equationText = document.createElement('h1');
+    equationText.textContent = equation.value;
+    // Append
+    item.appendChild(equationText);
+    itemContainer.appendChild(item);
+  });
 }
 
 // Dynamically adding correct/incorrect equations
@@ -160,74 +237,74 @@ function populateGamePage() {
   itemContainer.append(topSpacer, selectedItem);
 
   // Create Equations, Build Elements in DOM
-    createEquations();
-    equationsToDOM();
+  createEquations();
+  equationsToDOM();
+
   // Set Blank Space Below
   const bottomSpacer = document.createElement('div');
   bottomSpacer.classList.add('height-500');
   itemContainer.appendChild(bottomSpacer);
 }
 
-
-// Displays 3, 2, 1, GO! カウントダウン表示 1秒づつズレて表示
-function countdownStart(){
-    countdown.textContent = '3'; // テキスト３を表示
-    setTimeout(() => {
-        countdown.textContent = '2';
-    }, 1000); //１０００は1秒
-    setTimeout(() => {
-        countdown.textContent = '1';
-    }, 2000);　// 2秒遅れ
-    setTimeout(() => {
-        countdown.textContent = 'GO!';
-    }, 3000); // 3秒遅れ
+// Displays 3, 2, 1, GO!
+function countdownStart() {
+  countdown.textContent = '3';
+  setTimeout(() => {
+    countdown.textContent = '2';
+  }, 1000);
+  setTimeout(() => {
+    countdown.textContent = '1';
+  }, 2000);
+  setTimeout(() => {
+    countdown.textContent = 'GO!';
+  }, 3000);
 }
 
-// Navigate from Splash Page to Countdown Page スタートボタン押したら、カウントダウンページになる
-function showCountdown(){
-    countdownPage.hidden = false;
-    splashPage.hidden = true;
-    countdownStart();
-    populateGamePage();
-    setTimeout(showGamePage, 400);
+// Navigate from Splash Page to CountdownPage to Game Page
+function showCountdown() {
+  countdownPage.hidden = false;
+  splashPage.hidden = true;
+  countdownStart();
+  populateGamePage();
+  setTimeout(showGamePage, 4000);
 }
 
-
-// Get the value from selected radio button クリックすると選んだ質問数の情報をえる
-function getRadioValue(){
-    let radioValue;
-    radioInputs.forEach((radioInput) => {
-        if(radioInput.checked){
-          radioValue = radioInput.value;
-         
-        }
-    });
-    return radioValue;
-}
-
-// Form that decides amount of questions 質問数を選んでスタートボタンクリック,カウントダウンページ開く
-function selectQuestionAmount(e){
-    e.preventDefault(); //初期設定を防ぐ
-    questionAmount = getRadioValue();
-    console.log('question amount:', questionAmount);
-    // きちんと入力されたらカウントダウンページに行く
-    if(questionAmount){
-        showCountdown();
+// Get the value from selected radio button
+function getRadioValue() {
+  let radioValue;
+  radioInputs.forEach((radioInput) => {
+    if (radioInput.checked) {
+      radioValue = radioInput.value;
     }
+  });
+  return radioValue;
 }
 
-//クリックすると背景色が水色になる
-startForm.addEventListener('click', ()=> {
-    radioContainers.forEach((radioEl) => {
-        // Remove Selected Label Styling
-        radioEl.classList.remove('selected-label');
-        // Add it back if radio input is checked
-        if(radioEl.children[1].checked){
-            radioEl.classList.add('selected-label');
-        }
-    });
-})
+// Form that decides amount of Questions
+function selectQuestionAmount(e) {
+  e.preventDefault();
+  questionAmount = getRadioValue();
+  console.log('question amount:', questionAmount);
+  if (questionAmount) {
+      showCountdown();
+  }
+}
 
-// Event Listeners　質問数選んでボタンをクリック
-startForm.addEventListener('submit', selectQuestionAmount);
+// Switch selected input styling
+startForm.addEventListener('click', () => {
+  radioContainers.forEach((radioEl) => {
+    // Remove Selected Label Styling
+    radioEl.classList.remove('selected-label');
+    // Add it back if radio input is checked
+    if (radioEl.children[1].checked) {
+      radioEl.classList.add('selected-label');
+    }
+  });
+});
+
+// Event Listeners
 gamePage.addEventListener('click', startTimer);
+startForm.addEventListener('submit', selectQuestionAmount);
+
+// On Load
+getSavedBestScores();
